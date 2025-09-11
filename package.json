@@ -1,12 +1,11 @@
 {
   "name": "impostor-server",
   "version": "1.0.0",
-  "main": "index.js",
-  "type": "commonjs",
+  "main": "index.mjs",
+  "type": "module",
   "dependencies": {
     "express": "^4.18.2",
     "nanoid": "^4.0.2",
-    "socket.io": "^4.7.4",
-    "socket.io-client": "^4.8.1"
+    "socket.io": "^4.7.4"
   }
 }
