@@ -78,6 +78,14 @@ io.on('connection', (socket) => {
     });
   });
 
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
   socket.on('comenzarPartida', (salaId) => {
     const sala = salas[salaId];
     if (!sala || sala.host !== socket.id) return;
@@ -99,7 +107,11 @@ io.on('connection', (socket) => {
         sala.roles[j.id] = jugadorFutbol;
       }
     });
-    io.to(salaId).emit('partidaIniciada');
+    
+    // Crear orden aleatorio inicial
+    sala.ordenJugadores = shuffleArray([...sala.jugadores]);
+    
+    io.to(salaId).emit('partidaIniciada', { jugadores: sala.ordenJugadores });
     // Enviar rol a cada jugador
     sala.jugadores.forEach(j => {
       io.to(j.id).emit('rolAsignado', { rol: sala.roles[j.id] });
@@ -150,6 +162,44 @@ io.on('connection', (socket) => {
         io.to(salaId).emit('finPartida', 'Ganaron los impostores');
       }
     }
+  });
+
+  socket.on('sortearJugadores', (salaId) => {
+    const sala = salas[salaId];
+    if (!sala || sala.host !== socket.id || sala.estado !== 'jugando') return;
+    
+    // Generar nuevo orden aleatorio
+    sala.ordenJugadores = shuffleArray([...sala.jugadores]);
+    io.to(salaId).emit('jugadoresOrdenados', { jugadores: sala.ordenJugadores });
+  });
+
+  socket.on('obtenerEstadoSala', (salaId) => {
+    const sala = salas[salaId];
+    if (sala) {
+      if (sala.estado === 'jugando') {
+        socket.emit('jugadoresOrdenados', { jugadores: sala.ordenJugadores || sala.jugadores });
+        // También reenviamos el rol al jugador
+        if (sala.roles[socket.id]) {
+          socket.emit('rolAsignado', { rol: sala.roles[socket.id] });
+        }
+      }
+      // Enviamos la información del host
+      socket.emit('actualizarLobby', {
+        jugadores: sala.jugadores,
+        host: sala.host
+      });
+    }
+  });
+
+  socket.on('sortearJugadores', (salaId) => {
+    const sala = salas[salaId];
+    if (!sala || sala.host !== socket.id || sala.estado !== 'jugando') return;
+    
+    // Generar nuevo orden aleatorio
+    sala.ordenJugadores = shuffleArray([...sala.jugadores]);
+    
+    // Emitir el nuevo orden a todos los jugadores de la sala
+    io.to(salaId).emit('jugadoresOrdenados', { jugadores: sala.ordenJugadores });
   });
 
   socket.on('disconnect', () => {
